@@ -8,7 +8,7 @@ It provides the flexibility to implement different updating user experiences lik
 
 ## Install
 
-We use [dep]() to manage our dependencies. you can easily add this library to your application by doing:
+We use [dep](https://github.com/golang/dep) to manage our dependencies. you can easily add this library to your application by doing:
 
 Using `dep`
 
