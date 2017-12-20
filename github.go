@@ -2,15 +2,14 @@ package goupdater
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"runtime"
 	"strings"
 
 	"github.com/google/go-github/github"
-	"github.com/hellofresh/goupdater/updater"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
@@ -19,6 +18,7 @@ var (
 	ErrMissingGithubToken = errors.New("to check for updates you must provide a github token")
 )
 
+// Github represents a github releases resolver
 type Github struct {
 	GithubClient *github.Client
 	HTTPClient   *http.Client
@@ -27,11 +27,8 @@ type Github struct {
 	Owner        string
 }
 
+// NewGithub creates a new instance of Github
 func NewGithub(token string, owner string, repo string) (*Github, error) {
-	return NewGithubWithLog(token, owner, repo, logrus.New())
-}
-
-func NewGithubWithLog(token string, owner string, repo string, logger logrus.FieldLogger) (*Github, error) {
 	if token == "" {
 		return nil, ErrMissingGithubToken
 	}
@@ -51,18 +48,19 @@ func NewGithubWithLog(token string, owner string, repo string, logger logrus.Fie
 	}, nil
 }
 
-func (p *Github) Update(currentVersion string) (bool, error) {
+// Update checks and returns a new binary on github releases
+func (p *Github) Update(currentVersion string) (io.ReadCloser, error) {
 	ctx := context.Background()
 
 	r, _, err := p.GithubClient.Repositories.GetLatestRelease(ctx, p.Owner, p.Repo)
 	if err != nil {
-		return false, errors.Wrap(err, "could not fetch github release")
+		return nopCloser{}, errors.Wrap(err, "could not fetch github release")
 	}
 
 	if *r.TagName != currentVersion {
 		downloadURL, err := p.getPlatformReleaseURL(r)
 		if err != nil {
-			return false, err
+			return nopCloser{}, err
 		}
 
 		q := downloadURL.Query()
@@ -71,28 +69,20 @@ func (p *Github) Update(currentVersion string) (bool, error) {
 
 		req, err := http.NewRequest(http.MethodGet, downloadURL.String(), nil)
 		if err != nil {
-			return false, errors.Wrap(err, "could not create a request for the release download URL")
+			return nopCloser{}, errors.Wrap(err, "could not create a request for the release download URL")
 		}
 
 		req.Header.Add("Accept", "application/octet-stream")
 
 		resp, err := p.HTTPClient.Do(req)
 		if err != nil {
-			return false, errors.Wrap(err, "could not make the request for a release")
+			return nopCloser{}, errors.Wrap(err, "could not make the request for a release")
 		}
 
-		defer resp.Body.Close()
-
-		githubUpdater := updater.New()
-		err = githubUpdater.Apply(resp.Body)
-		if err != nil {
-			return false, errors.Wrap(err, "could not apply the update")
-		}
-
-		return true, nil
+		return resp.Body, nil
 	}
 
-	return false, nil
+	return nopCloser{}, nil
 }
 
 func (p *Github) getPlatformReleaseURL(r *github.RepositoryRelease) (*url.URL, error) {
