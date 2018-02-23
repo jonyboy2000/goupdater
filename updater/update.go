@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Updater is responsible for self updating ahoy
+// Updater is responsible for self updating a binary
 type Updater struct{}
 
 // New creates a new instance of Updater
@@ -28,11 +28,6 @@ func (u *Updater) Apply(reader io.Reader) error {
 	err := archiver.TarGz.Read(reader, tmpPath)
 	if err != nil {
 		return errors.Wrap(err, "Could not unzip the asset")
-	}
-
-	newBytes, err := ioutil.ReadFile(path.Join(tmpPath, "ahoy"))
-	if err != nil {
-		return errors.Wrap(err, "Could not find new ahoy binary")
 	}
 
 	targetPath, err := osext.Executable()
@@ -50,6 +45,11 @@ func (u *Updater) Apply(reader io.Reader) error {
 	}
 
 	defer fp.Close()
+
+	newBytes, err := ioutil.ReadFile(path.Join(tmpPath, filename))
+	if err != nil {
+		return errors.Wrap(err, "Could not find new binary")
+	}
 
 	_, err = io.Copy(fp, bytes.NewReader(newBytes))
 
