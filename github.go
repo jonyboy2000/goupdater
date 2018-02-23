@@ -22,37 +22,44 @@ var (
 type Github struct {
 	GithubClient *github.Client
 	HTTPClient   *http.Client
-	Token        string
-	Repo         string
-	Owner        string
+	Opts         GithubOpts
+}
+
+// GithubOpts represents the available github resolver options
+type GithubOpts struct {
+	Token string
+	Owner string
+	Repo  string
 }
 
 // NewGithub creates a new instance of Github
-func NewGithub(token string, owner string, repo string) (*Github, error) {
-	if token == "" {
-		return nil, ErrMissingGithubToken
+func NewGithub(opts GithubOpts) (*Github, error) {
+	return NewGithubWithContext(context.TODO(), opts)
+}
+
+// NewGithubWithContext creates a new instance of Github and accepts a context param
+func NewGithubWithContext(ctx context.Context, opts GithubOpts) (*Github, error) {
+	var ts oauth2.TokenSource
+
+	if opts.Token != "" {
+		ts = oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: opts.Token},
+		)
 	}
 
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	)
-	tc := oauth2.NewClient(context.Background(), ts)
+	tc := oauth2.NewClient(ctx, ts)
 	githubClient := github.NewClient(tc)
 
 	return &Github{
 		GithubClient: githubClient,
 		HTTPClient:   http.DefaultClient,
-		Token:        token,
-		Owner:        owner,
-		Repo:         repo,
+		Opts:         opts,
 	}, nil
 }
 
 // Update checks and returns a new binary on github releases
-func (p *Github) Update(currentVersion string) (io.ReadCloser, error) {
-	ctx := context.Background()
-
-	r, _, err := p.GithubClient.Repositories.GetLatestRelease(ctx, p.Owner, p.Repo)
+func (p *Github) Update(ctx context.Context, currentVersion string) (io.ReadCloser, error) {
+	r, _, err := p.GithubClient.Repositories.GetLatestRelease(ctx, p.Opts.Owner, p.Opts.Repo)
 	if err != nil {
 		return nopCloser{}, errors.Wrap(err, "could not fetch github release")
 	}
@@ -63,9 +70,11 @@ func (p *Github) Update(currentVersion string) (io.ReadCloser, error) {
 			return nopCloser{}, err
 		}
 
-		q := downloadURL.Query()
-		q.Add("access_token", p.Token)
-		downloadURL.RawQuery = q.Encode()
+		if p.Opts.Token != "" {
+			q := downloadURL.Query()
+			q.Add("access_token", p.Opts.Token)
+			downloadURL.RawQuery = q.Encode()
+		}
 
 		req, err := http.NewRequest(http.MethodGet, downloadURL.String(), nil)
 		if err != nil {
