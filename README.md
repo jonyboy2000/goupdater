@@ -65,4 +65,4 @@ if updated {
 To start contributing, please check [CONTRIBUTING](CONTRIBUTING).
 
 ## Documentation
-Go Docs: godoc.org/github.com/italolelis/goupdater
+Go Docs: [godoc.org/github.com/italolelis/goupdater](https://godoc.org/github.com/italolelis/goupdater)
