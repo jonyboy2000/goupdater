@@ -29,20 +29,40 @@ Goupdater allows you to have different resolvers from where to fetch your binari
 Here is an example of how you can update your application using the `github releases` resover:
 
 ```go
-var currentVersion = "v1.2.3"
-var githubToken = "yourToken"
+// we define all the necessary configurations.
+var (
+    currentVersion = "v1.2.3"    // the version of your app
+    githubToken    = "yourToken" // This is only required for private github repositories
+    owner          = "hellofresh"
+    repo           = "myRepo"
+)
 
-// We choose the github release provider
-resolver, err := goupdater.NewGithub(githubToken, "hellofresh", "myRepo")
-failOnError(err, "could not create github resolver")
+// We choose the github release resolver. You can implement your own resolver by implementing
+// the goupdater.Resolver interface
+resolver, err := goupdater.NewGithub(goupdater.GithubOpts{
+    Token: githubToken,
+    Owner: owner,
+    Repo:  repo,
+})
+if err != nil {
+    panic(err)
+}
 
 // Updates the running binary to the latest available version
 updated, err := goupdater.Update(resolver, currentVersion)
-failOnError(err, "could not update binary")
+if err != nil {
+    panic(err)
+}
 
 if updated {
-    log.Info("You are now using the latest version!")
+    fmt.Print("You are now using the latest version!")
 } else {
-    log.Info("You already have the latest version!")
+    fmt.Print("You already have the latest version!")
 }
 ```
+
+## Contributing
+To start contributing, please check [CONTRIBUTING](CONTRIBUTING).
+
+## Documentation
+Go Docs: godoc.org/github.com/italolelis/goupdater
