@@ -9,6 +9,7 @@ package goupdater
 import (
 	"context"
 	"io"
+	"strings"
 
 	"github.com/italolelis/goupdater/updater"
 	"github.com/pkg/errors"
@@ -19,13 +20,6 @@ type Resolver interface {
 	Update(ctx context.Context, currentVersion string) (io.ReadCloser, error)
 }
 
-type nopCloser struct {
-	io.Reader
-}
-
-func (nopCloser) Close() error                     { return nil }
-func (nopCloser) Read(p []byte) (n int, err error) { return 0, nil }
-
 // Update updates the current binary with the chosen resolver
 func Update(resolver Resolver, currentVersion string) (bool, error) {
 	return UpdateWithContext(context.TODO(), resolver, currentVersion)
@@ -35,13 +29,16 @@ func Update(resolver Resolver, currentVersion string) (bool, error) {
 func UpdateWithContext(ctx context.Context, resolver Resolver, currentVersion string) (bool, error) {
 	reader, err := resolver.Update(ctx, currentVersion)
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	defer reader.Close()
 
 	githubUpdater := updater.New()
 	err = githubUpdater.Apply(reader)
 	if err != nil {
+		if strings.Contains(err.Error(), "EOF") {
+			return true, nil
+		}
 		return false, errors.Wrap(err, "could not apply the update")
 	}
 
