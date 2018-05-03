@@ -39,10 +39,10 @@ var (
 
 // We choose the github release resolver. You can implement your own resolver by implementing
 // the goupdater.Resolver interface
-resolver, err := goupdater.NewGithub(goupdater.GithubOpts{
-    Token: githubToken,
-    Owner: owner,
-    Repo:  repo,
+resolver, err := goupdater.NewGithub(
+    goupdater.WithToken(githubToken),
+    goupdater.WithOwner(owner),
+    goupdater.WithRepo(repo),
 })
 if err != nil {
     panic(err)
@@ -50,6 +50,33 @@ if err != nil {
 
 // Updates the running binary to the latest available version
 updated, err := goupdater.Update(resolver, currentVersion)
+if err != nil {
+    panic(err)
+}
+
+if updated {
+    fmt.Print("You are now using the latest version!")
+} else {
+    fmt.Print("You already have the latest version!")
+}
+```
+
+You can also pass a context to it:
+
+```go
+ctx := context.Background()
+
+resolver, err := goupdater.NewGithubWithContext(
+    ctx,
+    goupdater.WithToken(githubToken),
+    goupdater.WithOwner(owner),
+    goupdater.WithRepo(repo),
+})
+if err != nil {
+    panic(err)
+}
+
+updated, err := goupdater.UpdateWithContext(ctx, resolver, currentVersion)
 if err != nil {
     panic(err)
 }
