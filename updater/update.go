@@ -72,7 +72,6 @@ func (u *Updater) Apply(reader io.Reader) error {
 
 	// move the new exectuable in to become the new program
 	err = os.Rename(newPath, targetPath)
-
 	if err != nil {
 		// move unsuccessful
 		//
@@ -81,7 +80,7 @@ func (u *Updater) Apply(reader io.Reader) error {
 		// binary to take its place. That means there is no file where the current executable binary
 		// used to be!
 		// Try to rollback by restoring the old binary to its original path.
-		_ = os.Rename(oldPath, targetPath)
+		err = os.Rename(oldPath, targetPath)
 		if err != nil {
 			return errors.Wrap(err, "There was an error while renaming the binary")
 		}
